@@ -1,0 +1,168 @@
+---
+title: "Student Performance Analysis in R"
+author: "Alaa Moussa & Jozelina Gales"
+output: html_document
+---
+
+# Objective
+
+This analysis investigates whether study hours per week and sleep duration per night predict student performance, measured by total academic score.
+
+# Research question
+
+**Do study hours per week and sleep hours per night predict student performance (total score)?**
+
+## Hypotheses
+
+- **H0:** Study hours and sleep hours do not significantly affect total score.
+- **H1:** Study hours and sleep hours significantly affect total score.
+
+# Setup
+
+```{r}
+library(readr)
+library(psych)
+library(table1)
+library(ggplot2)
+library(tidyr)
+library(patchwork)
+
+Students_Grading_Dataset <- read.csv(
+  "data/Students_Grading_Dataset.csv",
+  stringsAsFactors = FALSE
+)
+```
+
+# Data inspection
+
+```{r}
+dim(Students_Grading_Dataset)
+head(Students_Grading_Dataset)
+str(Students_Grading_Dataset)
+summary(Students_Grading_Dataset)
+
+colSums(
+  is.na(
+    Students_Grading_Dataset[, c(
+      "Study_Hours_per_Week",
+      "Sleep_Hours_per_Night",
+      "Total_Score"
+    )]
+  )
+)
+```
+
+# Descriptive statistics
+
+```{r}
+table1(
+  ~ Study_Hours_per_Week + Sleep_Hours_per_Night + Total_Score | Gender,
+  data = Students_Grading_Dataset,
+  topclass = "Rtable1-zebra Rtable1-center"
+)
+
+describe(
+  Students_Grading_Dataset[, c(
+    "Study_Hours_per_Week",
+    "Sleep_Hours_per_Night",
+    "Total_Score"
+  )]
+)
+```
+
+# Binned variables and ANOVA
+
+```{r}
+Students_Grading_Dataset$Study_Hours_Binned <- cut(
+  Students_Grading_Dataset$Study_Hours_per_Week,
+  breaks = c(-Inf, 5, 10, 15, 20, Inf),
+  labels = c("Very Low", "Low", "Medium", "High", "Very High")
+)
+
+anova_result <- aov(
+  Total_Score ~ Study_Hours_Binned,
+  data = Students_Grading_Dataset
+)
+
+summary(anova_result)
+```
+
+# Visualisation
+
+```{r}
+plot1 <- ggplot(
+  Students_Grading_Dataset,
+  aes(x = Study_Hours_Binned, y = Total_Score)
+) +
+  geom_boxplot() +
+  labs(
+    title = "Total Score by Study Hours",
+    x = "Study Hours per Week",
+    y = "Total Score"
+  ) +
+  theme_classic()
+
+Students_Grading_Dataset$Sleep_Hours_Binned <- cut(
+  Students_Grading_Dataset$Sleep_Hours_per_Night,
+  breaks = c(-Inf, 4, 6, 8, 10, Inf),
+  labels = c("Very Low", "Low", "Medium", "High", "Very High")
+)
+
+plot2 <- ggplot(
+  Students_Grading_Dataset,
+  aes(x = Sleep_Hours_Binned, y = Total_Score)
+) +
+  geom_boxplot() +
+  labs(
+    title = "Total Score by Sleep Duration",
+    x = "Sleep Hours per Night",
+    y = "Total Score"
+  ) +
+  theme_classic()
+
+plot1 / plot2
+```
+
+# Correlation analysis
+
+```{r}
+cor(
+  Students_Grading_Dataset$Study_Hours_per_Week,
+  Students_Grading_Dataset$Total_Score,
+  method = "pearson"
+)
+
+cor(
+  Students_Grading_Dataset$Sleep_Hours_per_Night,
+  Students_Grading_Dataset$Total_Score,
+  method = "pearson"
+)
+```
+
+# Multiple linear regression
+
+```{r}
+model <- lm(
+  Total_Score ~ Study_Hours_per_Week + Sleep_Hours_per_Night,
+  data = Students_Grading_Dataset
+)
+
+summary(model)
+```
+
+# Regression diagnostics
+
+```{r}
+par(mfrow = c(2, 2))
+plot(model)
+```
+
+# Interpretation
+
+In the original coursework analysis, the Pearson correlations between both predictors and total score were very close to zero. In the multiple linear regression model, neither study hours nor sleep duration significantly predicted total score, and the model explained very little of the variation in academic performance.
+
+The analysis therefore suggested that other factors not included in the dataset may contribute more strongly to total score.
+
+# Limitations
+
+The analysis considered sleep duration rather than sleep quality, and the dataset may not capture factors such as study efficiency, stress, cognitive differences or external responsibilities. These limitations should be considered when interpreting the findings.
